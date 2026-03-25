@@ -1,0 +1,77 @@
+version: '2'
+# docker-compose.yml - Northwind Logistics Dev Environment
+# Uses PHP 5.6 + MySQL 5.7 to match production (circa 2013)
+# NOTE: we're on docker-compose v2 because v3 didn't exist in 2013
+# Upgrade path: "someday" - Dave 2013
+#
+# Usage:
+#   docker-compose up -d
+#   Open http://localhost:8080
+#   Login: admin / admin123
+#
+# MySQL will be available on port 3307 (3306 is usually taken on dev machines)
+# To import schema:
+#   docker exec -i northwind_db mysql -uroot -proot northwind < sql/northwind_schema.sql
+#
+# NOTE: the app expects MySQL at 'localhost' but in Docker it needs to be the
+# container name 'db'. Change DB_HOST in config.php when using Docker.
+# TODO: use environment variables instead of hardcoded config (perpetual TODO)
+
+services:
+
+  # PHP 5.6 + Apache
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: northwind_app
+    ports:
+      - "8080:80"
+    volumes:
+      # Mount code directory for live editing
+      # The Dockerfile copies files too, so edits are reflected without rebuild
+      - .:/var/www/html/
+      # Mount logs directory
+      - ./logs:/var/www/html/logs
+    depends_on:
+      - db
+    environment:
+      # Override DB host for Docker networking
+      # This would work if we used environment variables in config.php
+      # We don't. So this is aspirational. Change DB_HOST in config.php to 'db'.
+      - NORTHWIND_DB_HOST=db
+      - NORTHWIND_DB_USER=northwind_user
+      - NORTHWIND_DB_PASS=Northw1nd!@#2008
+      - NORTHWIND_DB_NAME=northwind
+    links:
+      - db:db
+    restart: unless-stopped
+
+  # MySQL 5.7 - matches production server MySQL version
+  db:
+    image: mysql:5.7
+    container_name: northwind_db
+    ports:
+      # Exposed on 3307 to avoid conflict with local MySQL
+      - "3307:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: northwind
+      MYSQL_USER: northwind_user
+      MYSQL_PASSWORD: Northw1nd!@#2008
+    volumes:
+      # Persist MySQL data between container restarts
+      - db_data:/var/lib/mysql
+      # Auto-import schema on first startup
+      # NOTE: this only runs if the DB is empty (first start)
+      - ./sql/northwind_schema.sql:/docker-entrypoint-initdb.d/northwind_schema.sql
+    command: >
+      --character-set-server=latin1
+      --collation-server=latin1_swedish_ci
+      --sql_mode=""
+      --max_allowed_packet=64M
+    restart: unless-stopped
+
+volumes:
+  db_data:
+    driver: local

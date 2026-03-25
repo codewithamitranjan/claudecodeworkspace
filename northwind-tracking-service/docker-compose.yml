@@ -1,0 +1,75 @@
+version: "3.9"
+
+services:
+  tracking-service:
+    build: .
+    ports:
+      - "8081:8080"
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/tracking
+      DB_USER: tracking
+      DB_PASS: tracking
+      KAFKA_BROKERS: kafka:9092
+      DUAL_WRITE_ENABLED: "true"
+      LEGACY_DB_URL: jdbc:mysql://monolith-db:3306/northwind
+      LEGACY_DB_USER: root
+      LEGACY_DB_PASS: root
+    depends_on:
+      db:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    restart: on-failure
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: tracking
+      POSTGRES_USER: tracking
+      POSTGRES_PASSWORD: tracking
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tracking -d tracking"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - tracking-pg-data:/var/lib/postgresql/data
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+
+  # Kafka UI — handy for inspecting topics during local development
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    ports:
+      - "8090:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+    depends_on:
+      - kafka
+
+volumes:
+  tracking-pg-data:

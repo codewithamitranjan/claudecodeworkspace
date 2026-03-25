@@ -1,0 +1,23 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Zip archives
+*.zip
+
+# Duplicate files
+CLAUDE 2.md
+
+# Claude internal
+.claude/
+
+# Ignore these folders
+uigen/
+inventory-management-main/
+
+# Java build output
+target/
+*.class
+*.jar
+*.war

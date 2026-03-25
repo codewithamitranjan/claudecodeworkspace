@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Northwind Logistics — Monolith to Microservices</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/black.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/monokai.css">
+<style>
+  :root {
+    --nw-orange: #f97316;
+    --nw-blue:   #3b82f6;
+    --nw-green:  #22c55e;
+    --nw-red:    #ef4444;
+    --nw-yellow: #eab308;
+    --nw-gray:   #94a3b8;
+    --nw-dark:   #0f172a;
+    --nw-card:   #1e293b;
+  }
+
+  .reveal { font-family: 'Inter', 'Segoe UI', sans-serif; }
+  .reveal h1 { font-size: 2.2em; font-weight: 800; letter-spacing: -1px; }
+  .reveal h2 { font-size: 1.6em; font-weight: 700; color: var(--nw-orange); border-bottom: 2px solid var(--nw-orange); padding-bottom: 0.2em; margin-bottom: 0.6em; }
+  .reveal h3 { font-size: 1.1em; font-weight: 600; color: var(--nw-blue); }
+  .reveal p, .reveal li { font-size: 0.82em; line-height: 1.6; }
+  .reveal pre { font-size: 0.55em !important; }
+  .reveal code { font-family: 'Fira Code', 'Cascadia Code', monospace; }
+
+  /* Badges */
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 0.62em; font-weight: 700; margin: 2px; letter-spacing: 0.5px; text-transform: uppercase; }
+  .badge-red    { background: #7f1d1d; color: #fca5a5; border: 1px solid #ef4444; }
+  .badge-green  { background: #14532d; color: #86efac; border: 1px solid #22c55e; }
+  .badge-blue   { background: #1e3a5f; color: #93c5fd; border: 1px solid #3b82f6; }
+  .badge-orange { background: #7c2d12; color: #fdba74; border: 1px solid #f97316; }
+  .badge-purple { background: #3b0764; color: #d8b4fe; border: 1px solid #a855f7; }
+  .badge-yellow { background: #713f12; color: #fde68a; border: 1px solid #eab308; }
+
+  /* Cards */
+  .card { background: var(--nw-card); border: 1px solid #334155; border-radius: 8px; padding: 14px 16px; margin: 6px 0; }
+  .card-grid { display: grid; gap: 10px; }
+  .card-grid-2 { grid-template-columns: 1fr 1fr; }
+  .card-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .card-grid-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+
+  /* Stats */
+  .stat { text-align: center; padding: 16px; }
+  .stat-number { font-size: 2.4em; font-weight: 900; color: var(--nw-orange); line-height: 1; }
+  .stat-label  { font-size: 0.65em; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
+
+  /* Timeline */
+  .timeline { list-style: none; padding: 0; margin: 0; position: relative; }
+  .timeline::before { content: ''; position: absolute; left: 16px; top: 0; bottom: 0; width: 2px; background: #334155; }
+  .timeline li { padding-left: 44px; position: relative; margin-bottom: 12px; }
+  .timeline li::before { content: attr(data-num); position: absolute; left: 0; width: 32px; height: 32px; border-radius: 50%; background: var(--nw-orange); color: #000; font-weight: 900; font-size: 0.75em; display: flex; align-items: center; justify-content: center; }
+
+  /* Tables */
+  .reveal table { font-size: 0.68em; width: 100%; border-collapse: collapse; }
+  .reveal table th { background: #1e293b; color: var(--nw-orange); padding: 8px 10px; text-align: left; border-bottom: 2px solid var(--nw-orange); font-size: 0.9em; }
+  .reveal table td { padding: 7px 10px; border-bottom: 1px solid #1e293b; vertical-align: top; }
+  .reveal table tr:nth-child(even) td { background: #0f1f35; }
+
+  /* Pain points */
+  .pain { border-left: 3px solid var(--nw-red); padding: 6px 12px; background: #1c1010; border-radius: 0 6px 6px 0; margin: 4px 0; font-size: 0.75em; font-family: monospace; }
+  .good { border-left: 3px solid var(--nw-green); padding: 6px 12px; background: #0d1f14; border-radius: 0 6px 6px 0; margin: 4px 0; font-size: 0.75em; font-family: monospace; }
+
+  /* Architecture boxes */
+  .arch-box { border: 1px solid #475569; border-radius: 6px; padding: 8px 12px; text-align: center; font-size: 0.65em; background: #1e293b; }
+  .arch-box.highlight { border-color: var(--nw-orange); background: #1c1505; }
+  .arch-box.new { border-color: var(--nw-green); background: #0a1f10; }
+  .arch-box.gateway { border-color: var(--nw-blue); background: #0a1020; }
+
+  /* Arrow */
+  .arrow { text-align: center; color: #475569; font-size: 1.4em; line-height: 1; }
+
+  /* Challenge row */
+  .ch-row { display: flex; align-items: center; gap: 10px; margin: 6px 0; font-size: 0.72em; }
+  .ch-num { background: var(--nw-orange); color: #000; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 0.9em; flex-shrink: 0; }
+  .ch-done { color: var(--nw-green); font-size: 1.1em; flex-shrink: 0; }
+
+  /* Title slide */
+  .title-logo { font-size: 3.5em; margin-bottom: 0; }
+  .title-sub  { color: var(--nw-orange); font-weight: 300; font-size: 1.2em; margin-top: 0; letter-spacing: 2px; text-transform: uppercase; }
+  .title-meta { color: var(--nw-gray); font-size: 0.7em; margin-top: 30px; }
+
+  /* Section divider */
+  .section-label { color: var(--nw-orange); font-size: 0.7em; text-transform: uppercase; letter-spacing: 3px; margin-bottom: 8px; }
+
+  .highlight-text { color: var(--nw-orange); font-weight: 700; }
+  .muted { color: var(--nw-gray); }
+  .tag-row { margin: 8px 0; }
+
+  /* Flow diagram */
+  .flow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center; margin: 12px 0; }
+  .flow-box { background: var(--nw-card); border: 1px solid #475569; border-radius: 6px; padding: 6px 12px; font-size: 0.65em; text-align: center; }
+  .flow-arrow { color: var(--nw-orange); font-size: 1.2em; }
+
+  /* Risk tag */
+  .risk-h { color: #ef4444; font-weight: 700; }
+  .risk-m { color: #eab308; font-weight: 700; }
+  .risk-l { color: #22c55e; font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 1 — TITLE
+═══════════════════════════════════════════════ -->
+<section data-background-gradient="radial-gradient(circle at 20% 50%, #1a0a00 0%, #0f172a 60%)">
+  <div class="title-logo">🚚</div>
+  <h1>Northwind Logistics</h1>
+  <p class="title-sub">Monolith to Microservices</p>
+  <p style="color:#94a3b8; font-size:0.9em; margin-top: 16px;">Scenario 1 — Code Modernization</p>
+  <div class="tag-row" style="margin-top: 28px;">
+    <span class="badge badge-red">PHP 5.6 Legacy</span>
+    <span class="badge badge-orange">Strangler Fig</span>
+    <span class="badge badge-green">Spring Boot 3.3</span>
+    <span class="badge badge-blue">Java 21</span>
+    <span class="badge badge-purple">Apache Kafka</span>
+    <span class="badge badge-yellow">10 Challenges</span>
+  </div>
+  <p class="title-meta">Hackathon — Code Modernization Track</p>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 2 — AGENDA
+═══════════════════════════════════════════════ -->
+<section>
+  <h2>What We'll Cover</h2>
+  <div class="card-grid card-grid-2">
+    <div class="card">
+      <h3>01 — The Problem</h3>
+      <p class="muted">Why the monolith had to go — the forcing functions that made modernization non-optional</p>
+    </div>
+    <div class="card">
+      <h3>02 — The Patient</h3>
+      <p class="muted">What we inherited — PHP 5, God classes, circular deps, SQL injection, and all</p>
+    </div>
+    <div class="card">
+      <h3>03 — The Strategy</h3>
+      <p class="muted">Strangler Fig pattern, seam identification, extraction order, no big-bang rewrite</p>
+    </div>
+    <div class="card">
+      <h3>04 — Target Architecture</h3>
+      <p class="muted">Spring Boot microservices, API Gateway, Kafka, per-service DBs, full observability</p>
+    </div>
+    <div class="card">
+      <h3>05 — The Execution</h3>
+      <p class="muted">All 10 challenges executed — stories, tests, extraction, ACL, contracts, CI/CD</p>
+    </div>
+    <div class="card">
+      <h3>06 — What We Proved</h3>
+      <p class="muted">Monolith still works. New services deployed. Zero big-bang. Runbook ready.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 3 — FORCING FUNCTIONS
+═══════════════════════════════════════════════ -->
+<section>
+  <div class="section-label">The Problem</div>
+  <h2>Why Modernization Was Non-Optional</h2>
+  <div class="card-grid card-grid-2">
+    <div>
+      <div class="card" style="border-color: #ef4444;">
+        <h3>🔒 Security Debt</h3>
+        <ul>
+          <li>MD5 passwords — cracked in milliseconds</li>
+          <li>SQL injection on every user-input field</li>
+          <li>Plaintext API keys in source code</li>
+          <li>Serialized objects in session (RCE vector)</li>
+          <li><code>eval()</code> with user-controlled input</li>
+        </ul>
+      </div>
+      <div class="card" style="border-color: #eab308; margin-top: 10px;">
+        <h3>📉 Operational Risk</h3>
+        <ul>
+          <li>PHP 5.6 — end-of-life since Dec 2018</li>
+          <li>mysql_* extension removed in PHP 7</li>
+          <li>Carrier APIs deprecated — tracking broken</li>
+          <li>Race condition producing duplicate invoices</li>
+          <li>No automated tests — every deploy is a prayer</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="border-color: #f97316;">
+        <h3>🚧 Scaling Ceiling</h3>
+        <ul>
+          <li>Single Apache process — no horizontal scale</li>
+          <li>Global <code>$conn</code> — no connection pooling</li>
+          <li>Flat-file cache with no TTL, no invalidation</li>
+          <li>Freight calc blocks order creation thread</li>
+          <li><code>sleep(1)</code> in archive cron loop</li>
+        </ul>
+      </div>
+      <div class="card" style="border-color: #a855f7; margin-top: 10px;">
+        <h3>👻 Knowledge Loss</h3>
+        <ul>
+          <li>Original developers gone since 2013</li>
+          <li>Documentation = outdated Word files</li>
+          <li>"Bob said don't touch this" × 17 comments</li>
+          <li>Circular dependency triangle — load order magic</li>
+          <li><code>hackfix_recalculate_totals()</code> — nobody knows why</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 4 — THE PATIENT
+═══════════════════════════════════════════════ -->
+<section>
+  <div class="section-label">The Patient</div>
+  <h2>What We Inherited — The PHP 5 Monolith</h2>
+  <div class="card-grid card-grid-2" style="align-items: start;">
+    <div>
+      <div class="card">
+        <h3>Codebase Stats</h3>
+        <div class="card-grid card-grid-2" style="margin-top: 8px;">
+          <div class="stat"><div class="stat-number">~8,600</div><div class="stat-label">Lines of PHP</div></div>
+          <div class="stat"><div class="stat-number">1,103</div><div class="stat-label">God Class Lines</div></div>
+          <div class="stat"><div class="stat-number">3</div><div class="stat-label">Circular Deps</div></div>
+          <div class="stat"><div class="stat-number">5</div><div class="stat-label">Known Bugs</div></div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:10px;">
+        <h3>Circular Dependency Triangle</h3>
+        <pre style="font-size:0.7em; color:#f97316; text-align:center; margin:0;">
+OrderManager.php
+    │ requires
+    ▼
+InvoiceGen.php
+    │ requires
+    ▼
+FreightCalc.php
+    │ requires
+    ▼
+OrderManager.php ← (prevented by require_once)
+        </pre>
+      </div>
+    </div>
+    <div>
+      <p style="font-size:0.72em; color:#94a3b8; margin-bottom: 8px;">Actual code from the monolith:</p>
+      <div class="pain">mysql_connect('localhost','root','root123') or die('DB error: '.mysql_error());</div>
+      <div class="pain">$sql = "SELECT * FROM users WHERE username='" . $_POST['username'] . "' AND password='".md5($_POST['password'])."'";</div>
+      <div class="pain">extract($_POST); // Overwrites any variable with POST data</div>
+      <div class="pain">$result = eval('return ' . $template . ';'); // eval() with user input</div>
+      <div class="pain">// TESTCODE = 100% discount — should have been removed in 2011</div>
+      <div class="pain">function hackfix_recalculate_totals() { // DO NOT REMOVE - June 2011</div>
+      <div style="margin-top: 10px;">
+        <span class="badge badge-red">SQL Injection</span>
+        <span class="badge badge-red">XSS</span>
+        <span class="badge badge-red">MD5 Passwords</span>
+        <span class="badge badge-red">eval()</span>
+        <span class="badge badge-red">No CSRF</span>
+        <span class="badge badge-red">Global State</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 5 — THREE BUSINESS CAPABILITIES
+═══════════════════════════════════════════════ -->
+<section>
+  <div class="section-label">Business Capabilities</div>
+  <h2>What This System Actually Does</h2>
+  <div class="card-grid card-grid-3">
+    <div class="card" style="border-color: #3b82f6;">
+      <h3>📦 Order Management</h3>
+      <p>Create, track and manage freight orders across 8 lifecycle states</p>
+      <br>
+      <div style="font-size:0.65em; color: #94a3b8;">
+        <code>new → processing → shipped → delivered</code><br>
+        <code>on_hold / cancelled / disputed / archived</code>
+      </div>
+      <br>
+      <p style="font-size:0.7em;">Lives in: <span class="highlight-text">OrderManager.php</span><br>
+      Risk: <span class="risk-h">HIGH</span> — God Class, last to extract</p>
+    </div>
+    <div class="card" style="border-color: #f97316;">
+      <h3>💰 Freight Rating</h3>
+      <p>Calculate shipment cost across 8 carriers using zone-based pricing</p>
+      <br>
+      <div style="font-size:0.65em; color: #94a3b8;">
+        <code>FedEx / UPS / USPS / DHL + LTL</code><br>
+        <code>8 zones × weight × 8.5% fuel surcharge</code>
+      </div>
+      <br>
+      <p style="font-size:0.7em;">Lives in: <span class="highlight-text">FreightCalc.php</span><br>
+      Risk: <span class="risk-l">LOW</span> — stateless, <strong>first to extract</strong></p>
+    </div>
+    <div class="card" style="border-color: #22c55e;">
+      <h3>📡 Shipment Tracking</h3>
+      <p>Poll carrier APIs, cache status, surface live tracking to customer service</p>
+      <br>
+      <div style="font-size:0.65em; color: #94a3b8;">
+        <code>Auto-detect carrier from tracking number</code><br>
+        <code>UPS / FedEx / USPS / DHL patterns</code>
+      </div>
+      <br>
+      <p style="font-size:0.7em;">Lives in: <span class="highlight-text">TrackingService.php</span><br>
+      Risk: <span class="risk-m">MEDIUM</span> — external APIs, second to extract</p>
+    </div>
+  </div>
+  <div class="card" style="margin-top: 12px; padding: 10px 16px;">
+    <p style="margin:0; font-size: 0.72em;">All three capabilities have <strong>User Stories</strong> with executable acceptance criteria →
+    <span class="highlight-text">docs/stories.md</span></p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 6 — MODERNIZATION STRATEGY
+═══════════════════════════════════════════════ -->
+<section>
+  <div class="section-label">The Strategy</div>
+  <h2>Strangler Fig — No Big-Bang Rewrite</h2>
+  <div class="card-grid card-grid-2">
+    <div>
+      <div class="card">
+        <h3>Why Strangler Fig?</h3>
+        <ul>
+          <li>Monolith keeps running throughout — zero downtime</li>
+          <li>Each extraction is independently deployable</li>
+          <li>Rollback is a feature flag flip, not a deployment</li>
+          <li>Business continues while engineering migrates</li>
+          <li>Each seam is proved by characterization tests before being cut</li>
+        </ul>
+      </div>
+      <div class="card" style="margin-top: 10px;">
+        <h3>The Invariant</h3>
+        <p style="color: #f97316; font-weight: 600;">Characterization tests must be GREEN before AND after every single commit.</p>
+        <p class="muted">If they break → revert. No exceptions.</p>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <h3>The Proxy Router (Nginx)</h3>
+        <pre style="font-size:0.7em; margin:0;"><code class="language-nginx">upstream freight-service { server freight:8080; }
+upstream monolith        { server php:8080; }
+
+location /api/freight/ {
+  proxy_pass http://freight-service;
+}
+location /api/tracking/ {
+  proxy_pass http://tracking-service;
+}
+location / {
+  proxy_pass http://monolith; # everything else
+}</code></pre>
+        <p style="font-size:0.65em; margin-top: 8px; color: #94a3b8;">Nginx is the <em>only</em> place that knows both systems exist simultaneously.</p>
+      </div>
+    </div>
+  </div>
+  <div class="flow" style="margin-top: 14px;">
+    <div class="flow-box" style="border-color:#ef4444;">PHP Monolith<br><span style="color:#94a3b8;font-size:0.9em;">All traffic</span></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box" style="border-color:#f97316;">Nginx Proxy<br><span style="color:#94a3b8;font-size:0.9em;">Route splitter</span></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box" style="border-color:#22c55e;">Freight Service<br><span style="color:#94a3b8;font-size:0.9em;">/api/freight/*</span></div>
+    <div class="flow-arrow">+</div>
+    <div class="flow-box" style="border-color:#3b82f6;">Tracking Service<br><span style="color:#94a3b8;font-size:0.9em;">/api/tracking/*</span></div>
+    <div class="flow-arrow">+</div>
+    <div class="flow-box" style="border-color:#475569;">Monolith<br><span style="color:#94a3b8;font-size:0.9em;">everything else</span></div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 7 — TARGET ARCHITECTURE
+═══════════════════════════════════════════════ -->
+<section>
+  <div class="section-label">Target Architecture</div>
+  <h2>Spring Boot Microservices Platform</h2>
+  <div style="display: grid; grid-template-columns: 1fr; gap: 8px; font-size: 0.68em;">
+    <!-- Client row -->
+    <div style="text-align:center;">
+      <div class="arch-box gateway" style="display:inline-block; width:70%;">
+        <strong style="color:#93c5fd;">Clients</strong> — Web App / Mobile / 3rd-party EDI
+      </div>
+    </div>
+    <div class="arrow">↓</div>
+    <!-- Gateway -->
+    <div style="text-align:center;">
+      <div class="arch-box gateway" style="display:inline-block; width:70%;">
+        <strong style="color:#93c5fd;">Spring Cloud Gateway</strong>
+        &nbsp;·&nbsp; JWT Auth &nbsp;·&nbsp; Rate Limiting &nbsp;·&nbsp; Routing &nbsp;·&nbsp; Correlation ID
+      </div>
+    </div>
+    <div class="arrow">↓</div>
+    <!-- Services row -->
+    <div class="card-grid" style="grid-template-columns: repeat(5, 1fr); gap: 6px;">
+      <div class="arch-box new"><strong>Order</strong><br><span class="muted">Spring Boot</span><br>Postgres</div>
+      <div class="arch-box highlight"><strong>Freight Rating</strong><br><span class="muted">Spring Boot</span><br>Postgres ✅ <em>done</em></div>
+      <div class="arch-box highlight"><strong>Tracking</strong><br><span class="muted">Spring Boot</span><br>Postgres ✅ <em>done</em></div>
+      <div class="arch-box new"><strong>Customer</strong><br><span class="muted">Spring Boot</span><br>Postgres</div>
+      <div class="arch-box new"><strong>Invoice</strong><br><span class="muted">Spring Boot</span><br>Postgres</div>
+    </div>
+    <div class="arrow">↕ events</div>
+    <!-- Kafka -->
+    <div style="text-align:center;">
+      <div class="arch-box" style="display:inline-block; width:70%; border-color:#a855f7; background:#1a0a2e;">
+        <strong style="color:#d8b4fe;">Apache Kafka</strong>
+        &nbsp;·&nbsp; orders.* &nbsp;·&nbsp; freight.rated &nbsp;·&nbsp; shipment.tracked &nbsp;·&nbsp; invoices.*
+      </div>
+    </div>
+    <!-- Observability -->
+    <div class="card-grid" style="grid-template-columns: repeat(4, 1fr); gap: 6px;">
+      <div class="arch-box"><span style="color:#94a3b8; font-size:0.85em;">Eureka<br>Service Discovery</span></div>
+      <div class="arch-box"><span style="color:#94a3b8; font-size:0.85em;">Zipkin<br>Distributed Traces</span></div>
+      <div class="arch-box"><span style="color:#94a3b8; font-size:0.85em;">Prometheus+Grafana<br>Metrics</span></div>
+      <div class="arch-box"><span style="color:#94a3b8; font-size:0.85em;">Config Server<br>Centralised Config</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 8 — EXTRACTION ORDER
+═══════════════════════════════════════════════ -->
+<section>
+  <div class="section-label">Decomposition Plan</div>
+  <h2>Seam Identification & Extraction Order</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th><th>Service</th><th>Extracted From</th><th>Key Inputs</th><th>Key Outputs</th><th>Circ. Dep Risk</th><th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong style="color:#f97316;">1</strong></td>
+        <td><strong>Freight Rating</strong></td>
+        <td><code>FreightCalc.php</code></td>
+        <td>weight, zips, carrier</td>
+        <td>rate, zone, ETA</td>
+        <td><span class="risk-l">LOW</span></td>
+        <td><span class="badge badge-green">✅ DONE</span></td>
+      </tr>
+      <tr>
+        <td><strong style="color:#f97316;">2</strong></td>
+        <td><strong>Tracking</strong></td>
+        <td><code>TrackingService.php</code></td>
+        <td>tracking#, carrier</td>
+        <td>status, events</td>
+        <td><span class="risk-m">MEDIUM</span></td>
+        <td><span class="badge badge-green">✅ DONE</span></td>
+      </tr>
+      <tr>
+        <td><strong style="color:#f97316;">3</strong></td>
+        <td><strong>Customer</strong></td>
+        <td><code>CustomerDB.php</code></td>
+        <td>customer data</td>
+        <td>profile, history</td>
+        <td><span class="risk-l">LOW</span></td>
+        <td><span class="badge badge-yellow">NEXT</span></td>
+      </tr>
+      <tr>
+        <td><strong style="color:#f97316;">4</strong></td>
+        <td><strong>Invoice</strong></td>
+        <td><code>InvoiceGen.php</code></td>
+        <td>order, freight rate</td>
+        <td>PDF, payment ref</td>
+        <td><span class="risk-m">MEDIUM</span></td>
+        <td><span class="badge badge-yellow">NEXT</span></td>
+      </tr>
+      <tr>
+        <td><strong style="color:#f97316;">5</strong></td>
+        <td><strong>Order (God Class)</strong></td>
+        <td><code>OrderManager.php</code></td>
+        <td>everything</td>
+        <td>everything</td>
+        <td><span class="risk-h">HIGH</span></td>
+        <td><span class="badge badge-red">LAST</span></td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="card" style="margin-top: 12px; padding: 10px 16px;">
+    <p style="margin:0; font-size:0.72em;"><strong style="color:#f97316;">Why Freight Rating first?</strong> Stateless pure function. No inbound circular deps. Narrow contract — weight+zips+carrier → price.
+    High business value — every invoice depends on it. Perfect Strangler Fig candidate.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 9 — TECH STACK
+═══════════════════════════════════════════════ -->
+<section>
+  <div class="section-label">Technology Decisions</div>
+  <h2>From PHP 5 → Java 21 + Spring Boot 3.3</h2>
+  <div class="card-grid card-grid-2">
+    <div>
+      <table style="font-size:0.65em;">
+        <thead><tr><th>Layer</th><th>Technology</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td>Runtime</td><td><strong>Java 21 LTS</strong></td><td>Virtual threads (Loom), long-term support</td></tr>
+          <tr><td>Framework</td><td><strong>Spring Boot 3.3</strong></td><td>Full Cloud ecosystem, Actuator, native</td></tr>
+          <tr><td>API Gateway</td><td><strong>Spring Cloud Gateway</strong></td><td>JWT, rate limiting, route filters</td></tr>
+          <tr><td>Discovery</td><td><strong>Spring Cloud Eureka</strong></td><td>Self-registration, no hardcoded IPs</td></tr>
+          <tr><td>Config</td><td><strong>Spring Cloud Config</strong></td><td>Git-backed, env-aware, hot refresh</td></tr>
+          <tr><td>Messaging</td><td><strong>Apache Kafka</strong></td><td>Durable, replayable, exactly-once</td></tr>
+          <tr><td>Database</td><td><strong>PostgreSQL 15</strong></td><td>Per-service, ACID, JSON columns</td></tr>
+          <tr><td>Migrations</td><td><strong>Flyway</strong></td><td>Versioned schema, CI-safe</td></tr>
+          <tr><td>Tracing</td><td><strong>Micrometer + Zipkin</strong></td><td>Trace IDs across all service hops</td></tr>
+          <tr><td>Metrics</td><td><strong>Prometheus + Grafana</strong></td><td>/actuator/prometheus on every service</td></tr>
+          <tr><td>Contracts</td><td><strong>Spring Cloud Contract</strong></td><td>Consumer-driven, both sides fail fast</td></tr>
+          <tr><td>CI/CD</td><td><strong>GitHub Actions</strong></td><td>Per-service, independent pipelines</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <div class="card" style="border-color:#22c55e;">
+        <h3>Security Transformation</h3>
+        <table style="font-size:0.62em;">
+          <thead><tr><th>PHP Monolith</th><th>Java Services</th></tr></thead>
+          <tbody>
+            <tr><td><span style="color:#ef4444;">MD5 passwords</span></td><td>BCrypt via Spring Security</td></tr>
+            <tr><td><span style="color:#ef4444;">$_SESSION globals</span></td><td>Stateless RS256 JWT</td></tr>
+            <tr><td><span style="color:#ef4444;">String concat SQL</span></td><td>JPA PreparedStatement only</td></tr>
+            <tr><td><span style="color:#ef4444;">Plaintext creds in PHP</span></td><td>K8s Secrets / Vault</td></tr>
+            <tr><td><span style="color:#ef4444;">No CSRF</span></td><td>Spring Security CSRF filter</td></tr>
+            <tr><td><span style="color:#ef4444;">Single admin role</span></td><td>RBAC via JWT claims</td></tr>
+            <tr><td><span style="color:#ef4444;">HTTP carrier APIs</span></td><td>mTLS inter-service</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 10 — ALL 10 CHALLENGES
+═══════════════════════════════════════════════ -->
+<section>
+  <div class="section-label">Execution</div>
+  <h2>All 10 Challenges — Delivered</h2>
+  <div class="card-grid card-grid-2">
+    <div>
+      <div class="ch-row"><span class="ch-num">1</span><div><strong>The Stories</strong> <span class="muted">— PM</span><br><span class="muted" style="font-size:0.85em;">3 user stories, 8 ACs each → docs/stories.md</span></div><span class="ch-done">✅</span></div>
+      <div class="ch-row"><span class="ch-num">2</span><div><strong>The Patient</strong> <span class="muted">— Architect</span><br><span class="muted" style="font-size:0.85em;">PHP 5 monolith: God class, circular deps, SQL injection</span></div><span class="ch-done">✅</span></div>
+      <div class="ch-row"><span class="ch-num">3</span><div><strong>The Map</strong> <span class="muted">— Architect</span><br><span class="muted" style="font-size:0.85em;">Decomposition plan, seam ranking → docs/DECOMPOSITION.md</span></div><span class="ch-done">✅</span></div>
+      <div class="ch-row"><span class="ch-num">4</span><div><strong>The Pin</strong> <span class="muted">— Tester</span><br><span class="muted" style="font-size:0.85em;">43 characterization tests — bugs pinned as-is</span></div><span class="ch-done">✅</span></div>
+      <div class="ch-row"><span class="ch-num">5</span><div><strong>The Cut</strong> <span class="muted">— Dev</span><br><span class="muted" style="font-size:0.85em;">Freight Rating Service — 44/44 tests pass</span></div><span class="ch-done">✅</span></div>
+    </div>
+    <div>
+      <div class="ch-row"><span class="ch-num">6</span><div><strong>The Fence</strong> <span class="muted">— Dev</span><br><span class="muted" style="font-size:0.85em;">ACL in monolith — feature flag, field translation</span></div><span class="ch-done">✅</span></div>
+      <div class="ch-row"><span class="ch-num">7</span><div><strong>The Contract</strong> <span class="muted">— Tester</span><br><span class="muted" style="font-size:0.85em;">Spring Cloud Contract — both sides, Groovy DSL</span></div><span class="ch-done">✅</span></div>
+      <div class="ch-row"><span class="ch-num">8</span><div><strong>The Pipeline</strong> <span class="muted">— Infra</span><br><span class="muted" style="font-size:0.85em;">2 independent GitHub Actions CI/CD pipelines</span></div><span class="ch-done">✅</span></div>
+      <div class="ch-row"><span class="ch-num">9</span><div><strong>The Second Cut</strong> <span class="muted">— Stretch</span><br><span class="muted" style="font-size:0.85em;">Tracking Service — Kafka events, Outbox, dual-write</span></div><span class="ch-done">✅</span></div>
+      <div class="ch-row"><span class="ch-num">10</span><div><strong>The Weekend</strong> <span class="muted">— Stretch</span><br><span class="muted" style="font-size:0.85em;">987-line cutover runbook — 3am decision tree</span></div><span class="ch-done">✅</span></div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:14px; text-align: center; border-color:#22c55e; padding: 10px;">
+    <p style="margin:0; font-size:0.8em; color:#22c55e; font-weight:700;">Nobody finishes all ten — that's the point. &nbsp;&nbsp;We finished all ten.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 11 — CHARACTERIZATION TESTS (CHALLENGE 4)
+═══════════════════════════════════════════════ -->
+<section>
+  <div class="section-label">Challenge 4 — The Pin</div>
+  <h2>Characterization Tests — Pin Before You Cut</h2>
+  <div class="card-grid card-grid-2">
+    <div>
+      <div class="card">
+        <h3>What They Are</h3>
+        <p>Tests that record what the code <em>does</em> — not what it <em>should</em> do. Bugs are pinned deliberately.</p>
+        <br>
+        <p style="color: #f97316; font-weight: 600;">Golden Rule:</p>
+        <p>Never change a characterization test to make it pass after a code change. If behavior changes intentionally, update the test AND document why.</p>
+      </div>
+      <div class="card" style="margin-top:10px;">
+        <h3>Bugs Intentionally Pinned</h3>
+        <ul>
+          <li>Florida ZIPs (320–349) → zone 4 <span class="muted">(should be 5–6)</span></li>
+          <li>Chicago→LA → zone 6 <span class="muted">(should be 8)</span></li>
+          <li>Fuel surcharge: $47.82 → $51.88 <span class="muted">(not $51.90)</span></li>
+          <li><code>helpers.php</code> gives different rate than <code>FreightCalc.php</code></li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <pre><code class="language-php">// FreightCalcCharacterizationTest.php
+// 43 assertions, zero PHPUnit, plain PHP 5.6
+
+function assert_equals($label, $exp, $got) {
+    if ($exp === $got) {
+        echo "[PASS] $label\n";
+        $GLOBALS['passed']++;
+    } else {
+        echo "[FAIL] $label: expected $exp got $got\n";
+        $GLOBALS['failed']++;
+    }
+}
+
+// BUG PIN — Florida zone undercharge (known since 2011)
+// originZip=32099 (Jacksonville FL), destZip=10001 (NYC)
+// CORRECT would be zone 5 or 6 — but code gives 4
+// DO NOT FIX HERE — fix in new Java service
+assert_equals(
+    'zone_rate_florida32099_to_nyc10001_BUG_zone4',
+    4,
+    $fc->calculateZoneRate('32099', '10001')
+);
+
+// Results: 43/43 passed</code></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 12 — THE CUT (CHALLENGE 5)
+═══════════════════════════════════════════════ -->
+<section>
+  <div class="section-label">Challenge 5 — The Cut</div>
+  <h2>Freight Rating Service — Clean API Contract</h2>
+  <div class="card-grid card-grid-2">
+    <div>
+      <pre><code class="language-java">// FreightController.java — Spring Boot 3.3
+@RestController
+@RequestMapping("/api/freight")
+public class FreightController {
+
+  @PostMapping("/rate")
+  public ResponseEntity&lt;FreightRateResponse&gt; calculateRate(
+      @Valid @RequestBody FreightRateRequest req) {
+    return ResponseEntity.ok(
+        ratingService.calculateRate(req));
+  }
+
+  @GetMapping("/carriers")
+  public ResponseEntity&lt;List&lt;String&gt;&gt; listCarriers() {
+    return ResponseEntity.ok(
+        List.of("FEDEX","UPS","USPS","DHL"));
+  }
+}
+
+// POST /api/freight/rate
+// { "weightLbs": 100, "originZip": "60601",
+//   "destZip": "10001", "carrier": "FEDEX" }
+// → { "carrier":"FEDEX", "zone":4,
+//     "totalRate":28.75, "estimatedDays":3 }</code></pre>
+    </div>
+    <div>
+      <div class="card">
+        <h3>Test Results</h3>
+        <div style="font-size:0.75em; color:#22c55e; font-family:monospace;">
+          FreightRatingServiceTest<br>
+          &nbsp;&nbsp;✓ zone calc: Chicago→NYC = 4<br>
+          &nbsp;&nbsp;✓ zone calc: same ZIP = 1<br>
+          &nbsp;&nbsp;✓ fuel surcharge 8.5%<br>
+          &nbsp;&nbsp;✓ all 4 carriers return rate<br>
+          &nbsp;&nbsp;✓ weight=0 → validation error<br>
+          &nbsp;&nbsp;✓ invalid ZIP → 400<br>
+          <br>
+          FreightControllerIntegrationTest<br>
+          &nbsp;&nbsp;✓ valid request → 200<br>
+          &nbsp;&nbsp;✓ missing carrier → 400<br>
+          &nbsp;&nbsp;✓ list carriers → 4 items<br>
+          <br>
+          <span style="color:#f97316;">Results: 44/44 — BUILD SUCCESS ✅</span>
+        </div>
+      </div>
+      <div class="card" style="margin-top: 10px;">
+        <h3>Both Paths Coexist</h3>
+        <p style="font-size:0.72em;">
+          Old: <code>localhost:8080/?page=freight_estimate</code> — PHP still works<br>
+          New: <code>localhost:8080/api/freight/rate</code> — Java serves it<br>
+          <span style="color:#94a3b8;">Nginx decides which gets the request.</span>
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 13 — THE FENCE (CHALLENGE 6)
+═══════════════════════════════════════════════ -->
+<section>
+  <div class="section-label">Challenge 6 — The Fence</div>
+  <h2>Anti-Corruption Layer — Legacy Stays Contained</h2>
+  <div class="card-grid card-grid-2">
+    <div>
+      <div class="card">
+        <h3>The ACL Rule</h3>
+        <p>The new service's API is <strong>clean and permanent</strong>.<br>
+        The ACL is <strong>always in the monolith</strong>, never in the Java service.</p>
+        <p>The Java service has no idea what <code>wt_lbs</code>, <code>cust_id</code>, or <code>FDX</code> are.</p>
+      </div>
+      <div class="card" style="margin-top:10px;">
+        <h3>Field Translation Map</h3>
+        <table style="font-size:0.65em;">
+          <thead><tr><th>PHP (legacy)</th><th>→</th><th>Java (clean)</th></tr></thead>
+          <tbody>
+            <tr><td><code>$order['wt_lbs']</code></td><td>→</td><td><code>weightLbs: Double</code></td></tr>
+            <tr><td><code>$order['origin_zip']</code></td><td>→</td><td><code>originZip: String</code></td></tr>
+            <tr><td><code>'FDX'</code> carrier code</td><td>→</td><td><code>"FEDEX"</code></td></tr>
+            <tr><td><code>'USP'</code> (typo)</td><td>→</td><td><code>"USPS"</code></td></tr>
+            <tr><td><code>$result['rate']</code> float</td><td>→</td><td><code>totalRate: BigDecimal</code></td></tr>
+            <tr><td>cents int (×100)</td><td>←</td><td>dollars BigDecimal</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div>
+      <pre><code class="language-php">// modules/acl/FreightServiceAdapter.php
+
+class FreightServiceAdapter {
+  public function getRate($orderId) {
+
+    // Translate legacy → new service contract
+    $order = OrderManager::getOrder($orderId);
+    $payload = json_encode([
+      'weightLbs'  => (float) $order['wt_lbs'],
+      'originZip'  => $order['origin_zip'],
+      'destZip'    => $order['dest_zip'],
+      'carrier'    => $this->mapCarrier($order['carrier_code'])
+      // wt_lbs = 2008 shortcode, weightLbs = clean domain name
+    ]);
+
+    $response = $this->postJson('/api/freight/rate', $payload);
+
+    if (!$response) {
+      // Fallback to legacy on any failure
+      return FreightCalc::calculateRate($orderId, ...);
+    }
+
+    // Translate response back to legacy format
+    return [
+      'rate_cents' => (int)($response['totalRate'] * 100),
+      'zone'       => $response['zone'],
+      'est_days'   => $response['estimatedDays'],
+    ];
+  }
+}</code></pre>
+      <div class="card" style="margin-top: 8px; padding: 8px 12px;">
+        <p style="margin:0; font-size:0.65em;">Feature flag: <code style="color:#f97316;">USE_NEW_FREIGHT_SERVICE=true</code> → new path<br>
+        Flip to <code>false</code> → old path. Rollback in 30 seconds.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 14 — CHALLENGE 9: KAFKA + DUAL WRITE
+═══════════════════════════════════════════════ -->
+<section>
+  <div class="section-label">Challenge 9 — The Second Cut</div>
+  <h2>Tracking Service — Events, Not HTTP. Outbox, Not Dual-Write.</h2>
+  <div class="card-grid card-grid-2">
+    <div>
+      <div class="card">
+        <h3>Event Flow</h3>
+        <div class="flow" style="flex-direction:column; align-items:flex-start; gap:4px;">
+          <div class="flow-box" style="width:100%;">Order Service publishes <code>northwind.orders.status</code> → <strong>SHIPPED</strong></div>
+          <div style="color:#f97316; padding-left:20px;">↓ Kafka consumer</div>
+          <div class="flow-box" style="width:100%;">Tracking Service starts polling carrier for this shipment</div>
+          <div style="color:#f97316; padding-left:20px;">↓ on status change</div>
+          <div class="flow-box" style="width:100%;">Tracking Service publishes <code>northwind.shipment.tracked</code></div>
+          <div style="color:#f97316; padding-left:20px;">↓ consumed by</div>
+          <div class="flow-box" style="width:100%;">Freight Service updates zone cache when shipment moves region</div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <h3>The Outbox Pattern</h3>
+        <p style="font-size:0.72em; color:#ef4444;">Problem: write to DB AND publish to Kafka — what if publish fails?</p>
+        <pre style="font-size:0.75em; margin: 6px 0;"><code class="language-java">// One @Transactional boundary — both or neither
+trackingEventRepo.save(event);
+outboxRepo.save(new OutboxEvent(
+    "northwind.shipment.tracked", payload));
+// ↑ committed atomically
+
+// Separate processor (every 5s):
+// reads unpublished → publishes → marks done
+// Safe to retry. Idempotent.</code></pre>
+      </div>
+      <div class="card" style="margin-top:10px;">
+        <h3>Dual-Write Cutover</h3>
+        <p style="font-size:0.72em;"><code>DUAL_WRITE_ENABLED=true</code> → writes to <em>both</em> MySQL (monolith) and Postgres (new service)</p>
+        <p style="font-size:0.72em;"><code>DUAL_WRITE_ENABLED=false</code> → MySQL DataSource bean never instantiated. Zero code change.</p>
+        <p style="font-size:0.72em; color:#22c55e;">25/25 tests pass including @EmbeddedKafka consumer tests</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 15 — API GATEWAY & STANDARDS
+═══════════════════════════════════════════════ -->
+<section>
+  <div class="section-label">Challenge 11 — Microservices Standards</div>
+  <h2>API Gateway & Cross-Cutting Concerns</h2>
+  <div class="card-grid card-grid-2">
+    <div>
+      <div class="card">
+        <h3>Spring Cloud Gateway</h3>
+        <ul>
+          <li>Single entry point — <code>http://gateway:8080</code></li>
+          <li>JWT validation before any service sees the request</li>
+          <li>Redis rate limiting (100 req/s per client IP)</li>
+          <li><code>X-Correlation-ID</code> injected on every proxied request</li>
+          <li>Aggregates all service OpenAPI docs at <code>/swagger-ui.html</code></li>
+          <li>Eureka <code>lb://service-name</code> for load balancing</li>
+        </ul>
+      </div>
+      <div class="card" style="margin-top:10px;">
+        <h3>Resilience4j Circuit Breaker</h3>
+        <pre style="font-size:0.7em; margin:0;"><code class="language-java">@FeignClient(name = "freight-service")
+interface FreightClient {
+  @CircuitBreaker(
+    name = "freight-service",
+    fallbackMethod = "cachedRate")
+  FreightRateResponse getRate(request);
+}
+// CLOSED → OPEN → HALF_OPEN</code></pre>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <h3>Observability — Every Service</h3>
+        <pre style="font-size:0.68em; margin:0;"><code class="language-yaml"># Every service exposes:
+/actuator/health      # K8s liveness + readiness
+/actuator/metrics     # Prometheus scrape
+/actuator/info        # Build version, git SHA
+/v3/api-docs          # OpenAPI spec</code></pre>
+        <br>
+        <p style="font-size:0.7em;">Structured JSON logs — every line has <code>traceId</code>, <code>service</code>, <code>orderId</code>. Trace visible in Zipkin across all hops.</p>
+      </div>
+      <div class="card" style="margin-top:10px;">
+        <h3>Kafka Event Envelope</h3>
+        <pre style="font-size:0.65em; margin:0;"><code class="language-json">{
+  "eventId": "uuid-v4",      // idempotency key
+  "eventType": "ORDER_STATUS_CHANGED",
+  "traceId": "abc123",       // links to HTTP request
+  "version": 1,              // schema evolution
+  "occurredAt": "2026-...",
+  "payload": { }
+}</code></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 16 — CI/CD PIPELINES
+═══════════════════════════════════════════════ -->
+<section>
+  <div class="section-label">Challenge 8 — The Pipeline</div>
+  <h2>Independent CI/CD — One Failing Doesn't Block the Other</h2>
+  <div class="card-grid card-grid-2">
+    <div>
+      <div class="card" style="border-color:#ef4444;">
+        <h3 style="color:#f87171;">Monolith Pipeline</h3>
+        <p style="font-size:0.72em; color:#94a3b8;">Triggers on push to <code>northwind-monolith/**</code></p>
+        <ul style="font-size:0.75em;">
+          <li>Boot PHP 5.6 + MySQL 5.7 (Docker services)</li>
+          <li>Load northwind_schema.sql</li>
+          <li>Run 43 characterization tests</li>
+          <li>PHP lint — all files</li>
+          <li>Passes or fails independently</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="border-color:#22c55e;">
+        <h3 style="color:#4ade80;">Freight Service Pipeline</h3>
+        <p style="font-size:0.72em; color:#94a3b8;">Triggers on push to <code>northwind-freight-service/**</code></p>
+        <ul style="font-size:0.75em;">
+          <li>Java 21 (Temurin) + Postgres 15</li>
+          <li>Maven test — 44 unit + integration tests</li>
+          <li>Spring Cloud Contract verification</li>
+          <li>Upload Surefire XML artifacts</li>
+          <li>On merge to main → Docker build + push to GHCR</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:12px;">
+    <div class="card-grid card-grid-3" style="text-align:center; padding: 6px 0;">
+      <div>
+        <p style="font-size:0.7em; margin:0; color:#94a3b8;">Break the monolith pipeline</p>
+        <p style="font-size:0.8em; margin:0; color:#22c55e; font-weight:700;">Freight service still deploys ✅</p>
+      </div>
+      <div style="border-left: 1px solid #334155; border-right: 1px solid #334155;">
+        <p style="font-size:0.7em; margin:0; color:#94a3b8;">Break freight service pipeline</p>
+        <p style="font-size:0.8em; margin:0; color:#22c55e; font-weight:700;">Monolith still deploys ✅</p>
+      </div>
+      <div>
+        <p style="font-size:0.7em; margin:0; color:#94a3b8;">Contract tests break</p>
+        <p style="font-size:0.8em; margin:0; color:#ef4444; font-weight:700;">Both sides notified ✅</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 17 — CUTOVER RUNBOOK
+═══════════════════════════════════════════════ -->
+<section>
+  <div class="section-label">Challenge 10 — The Weekend</div>
+  <h2>Cutover Runbook — The One Ops Will Actually Follow</h2>
+  <div class="card-grid card-grid-2">
+    <div>
+      <div class="card">
+        <h3>13-Point Pre-Cutover Checklist</h3>
+        <ul style="font-size:0.72em;">
+          <li>Freight service health → <code>{"status":"UP"}</code></li>
+          <li>43/43 characterization tests green on new service</li>
+          <li>Rate comparison: old vs new within $0.01</li>
+          <li>Florida ZIP zone-5 bug <em>preserved</em> in Java service</li>
+          <li>All 8 carriers seeded in freight_rates DB</li>
+          <li>Rollback tested in staging within 7 days</li>
+          <li>On-call paged and acknowledged</li>
+          <li><strong>+5 more freight-specific checks</strong></li>
+        </ul>
+      </div>
+      <div class="card" style="margin-top:10px;">
+        <h3>9 Rollback Triggers (abort NOW if)</h3>
+        <ul style="font-size:0.72em;">
+          <li>Error rate &gt; 2% for 5 consecutive minutes</li>
+          <li>P95 latency &gt; 800ms (was 200ms)</li>
+          <li>Any invoice total mismatch &gt; $0.01</li>
+          <li>Any characterization test failure</li>
+          <li>5xx for any carrier</li>
+          <li>Rate divergence &gt; 5% in shadow mode</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <h3>The 3AM Decision Tree</h3>
+        <pre style="font-size:0.68em; color:#94a3b8; margin:0; font-family:monospace;">
+Alert fired
+│
+├─ 5xx from freight service?
+│   YES → ROLLBACK Step 1
+│   NO  ↓
+├─ Rates mismatching > $0.01?
+│   YES → ROLLBACK Step 1
+│   NO  ↓
+├─ Error rate > 2%?
+│   YES → ROLLBACK Step 1
+│   NO  ↓
+├─ P95 latency > 800ms?
+│   YES → scale pods, wait 5m
+│         still bad → ROLLBACK
+│   NO  ↓
+├─ Postgres DB healthy?
+│   NO  → restart DB container
+│   YES ↓
+└─ False alarm — monitor 10m
+        </pre>
+      </div>
+      <div class="card" style="margin-top:10px; padding: 10px 14px;">
+        <p style="margin:0; font-size:0.7em;">Rollback: flip <code>USE_NEW_FREIGHT_SERVICE=false</code> → done in <strong style="color:#22c55e;">&lt; 5 minutes</strong>.<br>
+        Full runbook: <span style="color:#f97316;">docs/CUTOVER_RUNBOOK.md</span> (987 lines)</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 18 — MIGRATION PHASES
+═══════════════════════════════════════════════ -->
+<section>
+  <div class="section-label">Roadmap</div>
+  <h2>Migration Phases — Incremental, Never Big-Bang</h2>
+  <ul class="timeline">
+    <li data-num="1">
+      <strong>Strangle</strong> <span class="badge badge-green">NOW</span>
+      <p class="muted">Nginx routes selected paths to Java services. ACL translates data shapes. Feature flags control rollout. Monolith fully operational throughout.</p>
+    </li>
+    <li data-num="2">
+      <strong>Isolate</strong> <span class="badge badge-yellow">NEXT</span>
+      <p class="muted">Each extracted service owns its Postgres DB. No direct DB access between services. Kafka carries state changes. Dual-write bridges the gap during transition.</p>
+    </li>
+    <li data-num="3">
+      <strong>Cut Over</strong> <span class="badge badge-blue">SPRINT+2</span>
+      <p class="muted">Feature flag flipped to 100%. ACL remains 30 days for rollback window. Characterization tests run against live traffic. Both paths verified identical output.</p>
+    </li>
+    <li data-num="4">
+      <strong>Decommission</strong> <span class="badge badge-orange">DAY 30</span>
+      <p class="muted">30-day clean run → delete PHP module. Remove ACL. Drop legacy MySQL table (after backup). Remove feature flag from all configs. Close migration epic.</p>
+    </li>
+  </ul>
+  <div class="card" style="margin-top: 14px; padding: 10px 16px;">
+    <p style="margin:0; font-size:0.72em; color:#94a3b8;">
+      Customer Service → Invoice Service → Order Service (God Class) follow the same four phases, in that order.
+      The Order Service is last — its circular deps must be fully resolved before extraction begins.
+    </p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 19 — WHAT WAS DELIVERED
+═══════════════════════════════════════════════ -->
+<section>
+  <div class="section-label">Deliverables</div>
+  <h2>What Was Built — Demo-Ready</h2>
+  <div class="card-grid card-grid-4" style="margin-bottom: 12px;">
+    <div class="stat card">
+      <div class="stat-number">~12K</div>
+      <div class="stat-label">Lines of code</div>
+    </div>
+    <div class="stat card">
+      <div class="stat-number">87</div>
+      <div class="stat-label">Tests written<br>(43+44)</div>
+    </div>
+    <div class="stat card">
+      <div class="stat-number">100%</div>
+      <div class="stat-label">Tests passing</div>
+    </div>
+    <div class="stat card">
+      <div class="stat-number">10/10</div>
+      <div class="stat-label">Challenges done</div>
+    </div>
+  </div>
+  <table style="font-size:0.68em;">
+    <thead><tr><th>Artefact</th><th>Location</th><th>Highlights</th></tr></thead>
+    <tbody>
+      <tr><td>PHP 5 Monolith</td><td><code>northwind-monolith/</code></td><td>1,103-line God class, circular deps, SQL injection, eval()</td></tr>
+      <tr><td>Freight Rating Service</td><td><code>northwind-freight-service/</code></td><td>Spring Boot 3.3, 44/44 tests, Flyway, Spring Cloud Contract</td></tr>
+      <tr><td>Tracking Service</td><td><code>northwind-tracking-service/</code></td><td>Kafka consumer/producer, Outbox pattern, dual-write, 25/25 tests</td></tr>
+      <tr><td>Anti-Corruption Layer</td><td><code>modules/acl/FreightServiceAdapter.php</code></td><td>Field translation, feature flag, fallback to legacy</td></tr>
+      <tr><td>Characterization Tests</td><td><code>tests/characterization/</code></td><td>43 assertions, bugs pinned, Florida zone bug documented</td></tr>
+      <tr><td>Contract Tests</td><td><code>src/test/resources/contracts/</code></td><td>Spring Cloud Contract DSL, consumer + provider</td></tr>
+      <tr><td>CI/CD Pipelines</td><td><code>.github/workflows/</code></td><td>2 independent pipelines, GHCR image push on main</td></tr>
+      <tr><td>Cutover Runbook</td><td><code>docs/CUTOVER_RUNBOOK.md</code></td><td>987 lines, 3am decision tree, &lt;5min rollback</td></tr>
+      <tr><td>Architecture Docs</td><td><code>CLAUDE.md</code> + <code>docs/</code></td><td>Decomposition plan, user stories, API gateway standards</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 20 — KEY TAKEAWAYS
+═══════════════════════════════════════════════ -->
+<section data-background-gradient="radial-gradient(circle at 80% 50%, #0a1f10 0%, #0f172a 60%)">
+  <h2>Key Takeaways</h2>
+  <div class="card-grid card-grid-2">
+    <div>
+      <div class="good">Characterization tests BEFORE any cut — pin behavior, not correctness</div>
+      <div class="good">ACL lives in the monolith — new service stays clean</div>
+      <div class="good">Strangler Fig = zero big-bang risk — rollback is a flag, not a deploy</div>
+      <div class="good">Outbox pattern = no dual-write race conditions, ever</div>
+      <div class="good">One DB per service — no shared schema, no coupling</div>
+    </div>
+    <div>
+      <div class="good">Independent CI/CD — a broken monolith never blocks a service deploy</div>
+      <div class="good">Contract tests — if one side changes, the other screams immediately</div>
+      <div class="good">Bugs in the old system are features to be preserved, not fixed during extraction</div>
+      <div class="good">The runbook is written BEFORE cutover — not during the 3am incident</div>
+      <div class="good">API Gateway is the single public face — services stay internal</div>
+    </div>
+  </div>
+  <div class="card" style="margin-top: 20px; border-color: #f97316; text-align:center; padding: 14px;">
+    <p style="margin:0; font-size:0.9em; color:#f97316; font-weight:700;">
+      Modernization is not a technology problem. It is a discipline problem.
+    </p>
+    <p style="margin:4px 0 0 0; font-size:0.72em; color:#94a3b8;">
+      The right patterns + the right order + the right safety nets = a monolith you can incrementally replace without ever taking it down.
+    </p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 21 — Q&A
+═══════════════════════════════════════════════ -->
+<section data-background-gradient="radial-gradient(circle at 20% 50%, #1a0a00 0%, #0f172a 60%)">
+  <div style="text-align:center; padding: 40px 0;">
+    <div style="font-size:3em; margin-bottom: 10px;">🚚</div>
+    <h1 style="color:#f97316;">Questions?</h1>
+    <p style="color:#94a3b8; font-size:0.9em; margin-top: 20px;">Northwind Logistics — Monolith to Microservices</p>
+    <div class="tag-row" style="margin-top: 24px;">
+      <span class="badge badge-orange">northwind-monolith/</span>
+      <span class="badge badge-green">northwind-freight-service/</span>
+      <span class="badge badge-blue">northwind-tracking-service/</span>
+    </div>
+    <div style="margin-top: 30px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; font-size: 0.7em;">
+      <div class="card">
+        <p style="margin:0; color:#94a3b8;">Boot monolith</p>
+        <code style="color:#f97316;">docker compose up --build</code>
+      </div>
+      <div class="card">
+        <p style="margin:0; color:#94a3b8;">Test freight service</p>
+        <code style="color:#22c55e;">mvn test</code> → 44/44
+      </div>
+      <div class="card">
+        <p style="margin:0; color:#94a3b8;">Characterization tests</p>
+        <code style="color:#3b82f6;">php tests/.../run.php</code> → 43/43
+      </div>
+    </div>
+  </div>
+</section>
+
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/highlight.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/notes/notes.js"></script>
+<script>
+Reveal.initialize({
+  hash: true,
+  slideNumber: 'c/t',
+  progress: true,
+  transition: 'slide',
+  transitionSpeed: 'fast',
+  backgroundTransition: 'fade',
+  controls: true,
+  controlsLayout: 'bottom-right',
+  center: false,
+  width: 1280,
+  height: 720,
+  margin: 0.04,
+  plugins: [ RevealHighlight, RevealNotes ]
+});
+</script>
+</body>
+</html>

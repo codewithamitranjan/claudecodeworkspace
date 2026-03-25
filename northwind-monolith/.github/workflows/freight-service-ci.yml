@@ -1,0 +1,138 @@
+name: Freight Service CI
+
+# Triggers only on changes inside the freight service directory.
+# This pipeline is INDEPENDENT of monolith-ci.yml.
+# A broken monolith build does NOT block a freight service deployment.
+# A broken freight service build does NOT block a monolith deployment.
+on:
+  push:
+    paths:
+      - 'northwind-freight-service/**'
+  pull_request:
+    paths:
+      - 'northwind-freight-service/**'
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # JOB 1: test
+  # Run on every push and every pull request.
+  # ---------------------------------------------------------------------------
+  test:
+    name: Java 21 — Maven test
+    runs-on: ubuntu-latest
+
+    services:
+      # PostgreSQL 15 matches the target production DB for the freight service.
+      # Credentials mirror what application.properties / application-test.yml
+      # expect in CI (override via environment variables in the Spring app).
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: freight
+          POSTGRES_PASSWORD: freight
+          POSTGRES_DB: freight
+        options: >-
+          --health-cmd="pg_isready -U freight"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=6
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      # Cache the local Maven repository so dependency downloads only happen
+      # when pom.xml changes, not on every run.
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('northwind-freight-service/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      # Run the full test suite including Spring Cloud Contract provider tests.
+      # -pl scopes Maven to the freight-service module only so changes in other
+      # modules in the repo do not affect this job.
+      - name: Run tests
+        run: mvn test -pl northwind-freight-service
+        env:
+          # Spring datasource — override the default localhost to the service container host.
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/freight
+          SPRING_DATASOURCE_USERNAME: freight
+          SPRING_DATASOURCE_PASSWORD: freight
+
+      # Upload Surefire XML reports as a build artifact so the failed test names
+      # are visible in the GitHub Actions UI without downloading logs.
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always() # upload even when tests fail so failures are diagnosable
+        with:
+          name: surefire-reports
+          path: northwind-freight-service/target/surefire-reports/
+          retention-days: 14
+
+  # ---------------------------------------------------------------------------
+  # JOB 2: build-and-push
+  # Runs only on push to main (not on pull requests).
+  # Depends on the test job — will not start if tests fail.
+  # ---------------------------------------------------------------------------
+  build-and-push:
+    name: Build JAR and push Docker image
+    runs-on: ubuntu-latest
+    needs: test
+    # Only publish images from the main branch, not from feature branches or PRs.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      # Re-use the Maven cache populated by the test job (same cache key).
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('northwind-freight-service/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      # -DskipTests: tests already ran in the test job; skip here to save time.
+      - name: Build JAR
+        run: mvn package -DskipTests -pl northwind-freight-service
+
+      # Log in to GitHub Container Registry using the GITHUB_TOKEN that Actions
+      # provides automatically — no additional secrets needed.
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Tag the image with the full commit SHA so every image is traceable to
+      # an exact source commit.  The `latest` tag is intentionally NOT pushed
+      # to avoid ambiguity in multi-service deployments.
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: northwind-freight-service
+          push: true
+          tags: ghcr.io/${{ github.repository }}/freight-service:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}

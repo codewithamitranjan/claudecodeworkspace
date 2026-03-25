@@ -1,0 +1,43 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+
+  flyway:
+    enabled: false   # H2 schema is managed by Hibernate ddl-auto in tests
+
+  # Default Kafka brokers for non-embedded-Kafka tests (TrackingServiceTest).
+  # The actual value doesn't matter because KafkaTemplate is @MockBean there.
+  # For OrderStatusConsumerTest, @EmbeddedKafka overrides this at runtime.
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: tracking-service-test
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+dual-write:
+  enabled: false   # No MySQL in tests
+
+legacy:
+  mysql:
+    url: jdbc:mysql://localhost:3306/northwind_test
+    username: test
+    password: test
+
+logging:
+  level:
+    com.northwind.tracking: DEBUG

@@ -1,0 +1,82 @@
+name: Monolith CI
+
+# Triggers only on changes inside the monolith directory.
+# This pipeline is INDEPENDENT of freight-service-ci.yml.
+# A failure here does NOT block a freight service deployment,
+# and a freight service failure does NOT block this pipeline.
+on:
+  push:
+    paths:
+      - 'northwind-monolith/**'
+  pull_request:
+    paths:
+      - 'northwind-monolith/**'
+
+jobs:
+  test:
+    name: PHP 5.6 — lint, schema load, characterization tests
+    runs-on: ubuntu-latest
+
+    services:
+      # MySQL 5.7 matches the version in docker-compose.yml so schema syntax
+      # is identical between local dev and CI.
+      mysql:
+        image: mysql:5.7
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: northwind
+        # Health check ensures the container is accepting connections before
+        # any step tries to load the schema.
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=6
+        ports:
+          - 3306:3306
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # shivammathur/setup-php supports PHP 5.6 via its nightly builds.
+      # mysql extension: required by db.php (mysql_connect / mysql_query).
+      # mbstring extension: required by several monolith string helpers.
+      - name: Set up PHP 5.6
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '5.6'
+          extensions: mysql, mbstring
+          coverage: none
+
+      # Load the full schema (tables + seed data) into the CI database.
+      # Runs against 127.0.0.1 because the MySQL service container publishes
+      # its port to the runner host on that address.
+      - name: Load Northwind schema
+        run: |
+          mysql -h 127.0.0.1 -uroot -proot northwind \
+            < northwind-monolith/sql/northwind_schema.sql
+
+      # Characterization tests capture the monolith's ACTUAL behaviour —
+      # including known bugs — so any extraction that changes observable output
+      # is caught immediately.  These must be green before AND after every commit.
+      # See CLAUDE.md §Challenge 4 for what behaviours are pinned.
+      - name: Run characterization tests
+        run: |
+          php northwind-monolith/tests/characterization/FreightCalcCharacterizationTest.php
+        env:
+          # Give the test script the same DB coordinates as the running MySQL service.
+          DB_HOST: 127.0.0.1
+          DB_USER: root
+          DB_PASS: root
+          DB_NAME: northwind
+          # Keep the legacy freight path active in CI — characterization tests
+          # must validate the old code, not the new service.
+          USE_NEW_FREIGHT_SERVICE: 'false'
+
+      # Lint every PHP file in the monolith.  php -l catches syntax errors that
+      # would otherwise only surface at runtime.  The `find … -exec` pattern
+      # exits non-zero as soon as any file fails, which fails the job.
+      - name: PHP lint check
+        run: |
+          find northwind-monolith -name "*.php" -exec php -l {} \;
